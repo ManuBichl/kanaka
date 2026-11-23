@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Foto-Cleaner Web</title>
+    <style>
+        :root {
+            --bg-color: #f2f2f7;
+            --card-bg: #ffffff;
+            --text-main: #1c1c1e;
+            --text-sub: #8e8e93;
+            --red: #ff3b30;
+            --green: #34c759;
+            --blue: #007aff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        header h1 {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .finish-btn {
+            background: none;
+            border: none;
+            color: var(--blue);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .finish-btn span {
+            color: var(--red);
+        }
+
+        /* Hauptbereich */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* Start-Screen */
+        .upload-box {
+            text-align: center;
+            background: var(--card-bg);
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            max-width: 350px;
+            width: 100%;
+        }
+
+        .upload-box h2 {
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+
+        .upload-box p {
+            color: var(--text-sub);
+            font-size: 14px;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+
+        .primary-btn {
+            background-color: var(--blue);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-block;
+            width: 100%;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Karten-Stapel */
+        .card-container {
+            position: relative;
+            width: 100%;
+            max-width: 380px;
+            height: 60vh;
+            max-height: 550px;
+            display: none;
+        }
+
+        .photo-card {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            touch-action: none;
+            will-change: transform;
+        }
+
+        .photo-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            pointer-events: none;
+            padding: 10px;
+        }
+
+        /* Visuelles Swipe-Overlay */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.1s;
+        }
+
+        .overlay-delete {
+            background: rgba(255, 59, 48, 0.35);
+        }
+
+        .overlay-keep {
+            background: rgba(52, 199, 89, 0.35);
+        }
+
+        .badge {
+            font-size: 32px;
+            font-weight: 800;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            border: 4px solid white;
+            text-transform: uppercase;
+        }
+
+        .badge-delete {
+            background: rgba(255, 59, 48, 0.85);
+            transform: rotate(15deg);
+        }
+
+        .badge-keep {
+            background: rgba(52, 199, 89, 0.85);
+            transform: rotate(-15deg);
+        }
+
+        /* Steuerungs-Buttons */
+        .controls {
+            display: none;
+            gap: 40px;
+            margin-top: 25px;
+        }
+
+        .circle-btn {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            border: none;
+            color: white;
+            font-size: 26px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s;
+        }
+
+        .circle-btn:active {
+            transform: scale(0.92);
+        }
+
+        .btn-trash { background-color: var(--red); }
+        .btn-heart { background-color: var(--green); }
+
+        /* Abschluss-Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-color);
+            z-index: 50;
+            display: none;
+            flex-direction: column;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .list-header {
+            font-size: 13px;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            padding-left: 5px;
+        }
+
+        .list-item {
+            background: var(--card-bg);
+            padding: 12px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+        }
+
+        .list-item img {
+            width: 55px;
+            height: 55px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+
+        .item-info {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .item-name {
+            font-weight: 600;
+            font-size: 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .item-meta {
+            font-size: 12px;
+            color: var(--text-sub);
+            margin-top: 3px;
+        }
+
+        .restore-btn {
+            background: rgba(0, 122, 255, 0.1);
+            color: var(--blue);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            background: var(--card-bg);
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .delete-confirm-btn {
+            background: var(--red);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <button class="finish-btn" onclick="resetApp()" style="color: var(--text-sub); font-weight: 400;">Neu laden</button>
+        <h1>Foto-Cleaner</h1>
+        <button class="finish-btn" onclick="openSummary()">
+            Abschließen <span id="delete-counter"></span>
+        </button>
+    </header>
+
+    <main>
+        <!-- Startbildschirm -->
+        <div class="upload-box" id="start-screen">
+            <h2>Fotos aussortieren</h2>
+            <p>Wähle Bilder aus deiner Galerie aus. Wische nach links zum Entfernen oder nach rechts zum Behalten.</p>
+            <label class="primary-btn">
+                Fotos auswählen
+                <input type="file" id="file-input" multiple accept="image/*">
+            </label>
+        </div>
+
+        <!-- Fertig-Bildschirm -->
+        <div class="upload-box" id="done-screen" style="display: none;">
+            <h2>Alle durchgesehen!</h2>
+            <p id="done-text">Du hast alle ausgewählten Fotos bearbeitet.</p>
+            <button class="primary-btn" style="background: var(--red); margin-bottom: 10px;" id="done-review-btn" onclick="openSummary()">Löschliste prüfen</button>
+            <button class="primary-btn" style="background: var(--text-sub);" onclick="resetApp()">Weitere Fotos laden</button>
+        </div>
+
+        <!-- Kartenstapel -->
+        <div class="card-container" id="card-container"></div>
+
+        <!-- Buttons -->
+        <div class="controls" id="controls">
+            <button class="circle-btn btn-trash" onclick="triggerSwipe('left')" title="Entfernen">🗑️</button>
+            <button class="circle-btn btn-heart" onclick="triggerSwipe('right')" title="Behalten">❤️</button>
+        </div>
+    </main>
+
+    <!-- Abschluss-Modal -->
+    <div class="modal" id="summary-modal">
+        <header>
+            <button class="finish-btn" onclick="closeSummary()">Zurück</button>
+            <h1>Abschließen</h1>
+            <div style="width: 50px;"></div>
+        </header>
+
+        <div class="modal-list" id="modal-list"></div>
+
+        <div class="modal-footer" id="modal-footer">
+            <button class="delete-confirm-btn" id="confirm-delete-btn" onclick="confirmDeletion()">
+                Fotos endgültig löschen
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let photos = [];
+        let toDelete = [];
+
+        const fileInput = document.getElementById('file-input');
+        const startScreen = document.getElementById('start-screen');
+        const doneScreen = document.getElementById('done-screen');
+        const cardContainer = document.getElementById('card-container');
+        const controls = document.getElementById('controls');
+        const deleteCounter = document.getElementById('delete-counter');
+
+        // Bilder einlesen
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            if (!files.length) return;
+
+            photos = files.map((file, index) => ({
+                id: Date.now() + '-' + index,
+                name: file.name,
+                size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+                url: URL.createObjectURL(file)
+            }));
+
+            startScreen.style.display = 'none';
+            doneScreen.style.display = 'none';
+            cardContainer.style.display = 'block';
+            controls.style.display = 'flex';
+            renderCards();
+        });
+
+        // Karten rendern
+        function renderCards() {
+            cardContainer.innerHTML = '';
+            updateCounter();
+
+            if (photos.length === 0) {
+                cardContainer.style.display = 'none';
+                controls.style.display = 'none';
+                doneScreen.style.display = 'block';
+                document.getElementById('done-review-btn').style.display = toDelete.length > 0 ? 'block' : 'none';
+                return;
+            }
+
+            // Maximal 3 Karten gleichzeitig im DOM halten für flüssige Performance
+            const visiblePhotos = photos.slice(0, 3).reverse();
+
+            visiblePhotos.forEach((photo, idx) => {
+                const isTopCard = idx === visiblePhotos.length - 1;
+                const card = document.createElement('div');
+                card.className = 'photo-card';
+                card.dataset.id = photo.id;
+
+                card.innerHTML = `
+                    <img src="${photo.url}" alt="${photo.name}">
+                    <div class="overlay overlay-delete"><div class="badge badge-delete">Löschen</div></div>
+                    <div class="overlay overlay-keep"><div class="badge badge-keep">Behalten</div></div>
+                `;
+
+                if (isTopCard) {
+                    setupSwipeGestures(card, photo);
+                }
+
+                cardContainer.appendChild(card);
+            });
+        }
+
+        // Touch- & Maus-Gesten einrichten
+        function setupSwipeGestures(card, photo) {
+            let startX = 0;
+            let currentX = 0;
+            let isDragging = false;
+
+            const delOverlay = card.querySelector('.overlay-delete');
+            const keepOverlay = card.querySelector('.overlay-keep');
+
+            const onStart = (x) => {
+                isDragging = true;
+                startX = x;
+                card.style.transition = 'none';
+            };
+
+            const onMove = (x) => {
+                if (!isDragging) return;
+                currentX = x - startX;
+                const rotate = currentX * 0.05;
+                card.style.transform = `translateX(${currentX}px) rotate(${rotate}deg)`;
+
+                if (currentX < 0) {
+                    delOverlay.style.opacity = Math.min(Math.abs(currentX) / 120, 1);
+                    keepOverlay.style.opacity = 0;
+                } else {
+                    keepOverlay.style.opacity = Math.min(currentX / 120, 1);
+                    delOverlay.style.opacity = 0;
+                }
+            };
+
+            const onEnd = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                card.style.transition = 'transform 0.3s ease-out';
+
+                if (currentX < -110) {
+                    completeSwipe(card, photo, 'left');
+                } else if (currentX > 110) {
+                    completeSwipe(card, photo, 'right');
+                } else {
+                    card.style.transform = 'translateX(0) rotate(0deg)';
+                    delOverlay.style.opacity = 0;
+                    keepOverlay.style.opacity = 0;
+                }
+                currentX = 0;
+            };
+
+            // Touch Events (iPhone / Smartphone)
+            card.addEventListener('touchstart', e => onStart(e.touches[0].clientX));
+            card.addEventListener('touchmove', e => onMove(e.touches[0].clientX));
+            card.addEventListener('touchend', onEnd);
+
+            // Mouse Events (Desktop-Browser)
+            card.addEventListener('mousedown', e => onStart(e.clientX));
+            window.addEventListener('mousemove', e => onMove(e.clientX));
+            window.addEventListener('mouseup', onEnd);
+        }
+
+        // Swipe abschließen
+        function completeSwipe(card, photo, direction) {
+            const moveOutX = direction === 'left' ? -window.innerWidth : window.innerWidth;
+            card.style.transform = `translateX(${moveOutX}px) rotate(${direction === 'left' ? -25 : 25}deg)`;
+
+            setTimeout(() => {
+                photos = photos.filter(p => p.id !== photo.id);
+                if (direction === 'left') {
+                    toDelete.push(photo);
+                }
+                renderCards();
+            }, 250);
+        }
+
+        // Button-Klick auslösen
+        function triggerSwipe(direction) {
+            if (photos.length === 0) return;
+            const topCard = cardContainer.lastElementChild;
+            const topPhoto = photos[0];
+            topCard.style.transition = 'transform 0.3s ease-out';
+            
+            const overlay = topCard.querySelector(direction === 'left' ? '.overlay-delete' : '.overlay-keep');
+            overlay.style.opacity = 1;
+            
+            completeSwipe(topCard, topPhoto, direction);
+        }
+
+        function updateCounter() {
+            deleteCounter.textContent = toDelete.length > 0 ? `(${toDelete.length})` : '';
+        }
+
+        // Abschluss-Modal öffnen
+        function openSummary() {
+            const modal = document.getElementById('summary-modal');
+            const list = document.getElementById('modal-list');
+            const footer = document.getElementById('modal-footer');
+            const confirmBtn = document.getElementById('confirm-delete-btn');
+
+            modal.classList.add('active');
+            list.innerHTML = '';
+
+            if (toDelete.length === 0) {
+                list.innerHTML = '<p style="text-align:center; color: var(--text-sub); margin-top: 40px;">Keine Fotos zum Löschen ausgewählt.</p>';
+                footer.style.display = 'none';
+                return;
+            }
+
+            footer.style.display = 'block';
+            confirmBtn.textContent = `${toDelete.length} Fotos endgültig löschen`;
+
+            const header = document.createElement('div');
+            header.className = 'list-header';
+            header.textContent = 'Folgende Fotos wurden zum Entfernen markiert:';
+            list.appendChild(header);
+
+            toDelete.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'list-item';
+                row.innerHTML = `
+                    <img src="${item.url}" alt="">
+                    <div class="item-info">
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-meta">${item.size}</div>
+                    </div>
+                    <button class="restore-btn" onclick="restorePhoto('${item.id}')">Behalten</button>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        function closeSummary() {
+            document.getElementById('summary-modal').classList.remove('active');
+            updateCounter();
+        }
+
+        function restorePhoto(id) {
+            toDelete = toDelete.filter(p => p.id !== id);
+            openSummary();
+            updateCounter();
+        }
+
+        function confirmDeletion() {
+            const count = toDelete.length;
+            if (confirm(`Möchtest du das Entfernen von ${count} Fotos wirklich bestätigen?`)) {
+                // Speicher freigeben
+                toDelete.forEach(p => URL.revokeObjectURL(p.url));
+                toDelete = [];
+                closeSummary();
+                alert(`${count} Fotos wurden aus der Sitzung entfernt.\n\nHinweis: Aus Sicherheitsgründen können Web-Apps Dateien nicht direkt aus der Apple Fotos-Mediathek löschen.`);
+            }
+        }
+
+        function resetApp() {
+            photos.forEach(p => URL.revokeObjectURL(p.url));
+            toDelete.forEach(p => URL.revokeObjectURL(p.url));
+            photos = [];
+            toDelete = [];
+            fileInput.value = '';
+            updateCounter();
+            cardContainer.style.display = 'none';
+            controls.style.display = 'none';
+            doneScreen.style.display = 'none';
+            startScreen.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
